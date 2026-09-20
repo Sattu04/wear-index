@@ -1,5 +1,5 @@
 # Wear Index
-Live demo: https://your-app.streamlit.app
+Live demo: https://wear-index-gxgccuwtpazeeut7ryo3yc.streamlit.app/
 A sketch, not a product. Built in a day, off public data, by someone who does not
 work at SPARQ.
 
