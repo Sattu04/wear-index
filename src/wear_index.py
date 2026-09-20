@@ -117,15 +117,34 @@ def _z(value: float, stat: tuple[float, float]) -> float:
     return float(np.clip((value - med) / spread, Z_FLOOR, Z_CEIL))
 
 
-def assess(profile: dict, stats: dict, km_since_service: dict | None = None) -> list[dict]:
-    """Return one verdict per subsystem, with its reasons attached."""
+def assess(
+    profile: dict,
+    stats: dict,
+    km_since_service: dict | None = None,
+    available: set[str] | None = None,
+) -> list[dict]:
+    """Return one verdict per subsystem, with its reasons attached.
+
+    `available` restricts the model to the stressors a given data source can
+    actually compute. Weights for the survivors are renormalised, which is the
+    fairest possible treatment of a degraded sensor set: the model does the best
+    it can with what it has rather than silently scoring the gap as zero.
+    """
     km_since_service = km_since_service or {}
     out = []
 
     for sub in SUBSYSTEMS:
+        weights = sub.weights
+        if available is not None:
+            weights = {k: w for k, w in weights.items() if k in available}
+            if not weights:
+                continue
+            total = sum(weights.values())
+            weights = {k: w / total for k, w in weights.items()}
+
         contributions = []
         log_multiplier = 0.0
-        for key, weight in sub.weights.items():
+        for key, weight in weights.items():
             z = _z(profile[key], stats[key])
             term = weight * SENSITIVITY[key] * z
             log_multiplier += term
@@ -147,7 +166,7 @@ def assess(profile: dict, stats: dict, km_since_service: dict | None = None) -> 
         used = float(km_since_service.get(sub.key, 0.0))
         remaining = max(effective_life - used, 0.0)
 
-        contributions.sort(key=lambda c: -abs(c["z"] * sub.weights[c["stressor"]]))
+        contributions.sort(key=lambda c: -abs(c["z"] * weights[c["stressor"]]))
         out.append(
             {
                 "key": sub.key,
