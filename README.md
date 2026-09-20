@@ -75,6 +75,42 @@ The automotive demo runs on **synthetic** trips (`src/synth.py`) so it works in
 thirty seconds with no download. Nothing generated there is a finding. The real
 loader is `src/load_ved.py`, for the Michigan Vehicle Energy Dataset.
 
+## What two OBD-II PIDs are worth
+
+Public driving datasets don't log engine coolant temperature (Mode 01 PID `0x05`)
+or throttle position (`0x11`). Both are standard, and any device sitting in the
+port already reads them. Losing them removes four of the ten stressors —
+including the brake one, which is the only output a driver would pay for.
+
+Worth measuring rather than asserting. Every driver scored twice, once on all ten
+stressors and once on the six that survive:
+
+```
+                   removed  stressors_lost  top-pick changes  wear-rate error  rank shift
+  throttle position (0x11)               1             15.0%             4.1%        0.05
+coolant temperature (0x05)               3             12.0%            11.1%        0.28
+                 both PIDs               4             25.5%            15.2%        0.32
+```
+
+**Without those two channels, the subsystem a driver is told to worry about first
+changes for about one in four drivers.** Stable across seeds (24.0–27.5% over
+four runs of 200 drivers).
+
+The damage isn't spread evenly. Brakes and engine internals take ~25% wear-rate
+error; transmission takes none, because it never depended on those channels.
+
+The degraded run renormalises the surviving weights rather than scoring missing
+stressors as zero. That's deliberately generous to the degraded model — treating
+absent data as "no stress" would inflate the gap and would be a dishonest way to
+make the point.
+
+Reproduce: `python src/ablate_pids.py`
+
+Caveat worth stating plainly: this runs on synthetic trips, so it measures how
+much the *model* depends on those channels, not how much real-world accuracy is
+lost. The honest version of this experiment needs real logs from a device that
+reads all ten.
+
 ## The three things wrong with this
 
 1. **The sensitivities are guessed.** Ten constants in `wear_index.py` set how
