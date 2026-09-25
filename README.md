@@ -15,14 +15,14 @@ per-subsystem wear rate against a fleet baseline, and turns book service interva
 into intervals for *this* driver.
 
 ```
-Front brake pads: wearing 2.3x faster than the fleet median.
-Book-interval 55,000 km becomes 23,900 km for this driver.
-  - time resting on the brake: 0.24 of moving time (fleet median 0.14).
+Front brake pads: wearing 3.1x faster than the fleet median.
+Book-interval 55,000 km becomes 17,739 km for this driver.
+  - time resting on the brake: 0.216 of moving time (fleet median 0.142).
     Light continuous pad contact keeps the pad above its designed operating
     temperature, glazing the friction material and scoring the rotor.
-  - hard stops: 4.6 per 100 km (fleet median 1.7).
+  - hard stops: 2.43 per 100 km (fleet median 1.14).
 ```
-
+That is driver D001 from `python src/run_demo.py`, unedited.
 Every number traces back to a stressor, and every stressor traces back to a
 mechanism. No step in the chain is a black box, because a driver won't act on a
 number they can't argue with, and a mechanic won't stake a repair order on one.
