@@ -1,5 +1,6 @@
 # Wear Index
 Live demo: https://wear-index-gxgccuwtpazeeut7ryo3yc.streamlit.app/
+
 A sketch, not a product. Built in a day, off public data, by someone who does not
 work at SPARQ.
 
@@ -93,8 +94,7 @@ coolant temperature (0x05)               3             12.0%            11.1%   
 ```
 
 **Without those two channels, the subsystem a driver is told to worry about first
-changes for about one in four drivers.** Stable across seeds (24.0–27.5% over
-four runs of 200 drivers).
+changes for about one in four drivers.** Stable across seeds (23–28% across five seeds of 200 drivers).
 
 The damage isn't spread evenly. Brakes and engine internals take ~25% wear-rate
 error; transmission takes none, because it never depended on those channels.
@@ -137,6 +137,8 @@ src/obd_features.py      ten stressors, each with its wear mechanism attached
 src/wear_index.py        stressors -> per-subsystem wear rate and interval
 src/synth.py             synthetic trip generator (demo only)
 src/load_ved.py          real loader, and what VED is missing
+src/ablate_pids.py       what coolant temp and throttle position are worth
+src/run_demo.py          the whole automotive pipeline, end to end
 app.py                   Streamlit readout
 ```
 
