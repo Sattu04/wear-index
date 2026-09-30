@@ -184,53 +184,28 @@ def assess(
     return out
 
 
-# What a driver could actually do about each stressor. A verdict with no lever
-# attached is just an accusation, and people close apps that accuse them.
-ACTIONS = {
-    "brake_dwell_frac": "easing off the pedal on long descents rather than resting on it",
-    "harsh_decel_per_100km": "leaving a little more space and braking earlier",
-    "cold_high_load_events": "keeping the revs light for the first two minutes",
-    "short_trip_frac": "combining short trips, or one longer run a week",
-    "lugging_frac": "changing down before the engine starts labouring",
-    "high_rpm_frac": "shifting up slightly earlier",
-    "idle_frac": "switching off rather than idling for over a minute",
-    "thermal_excursions_per_100km": "having the cooling system looked at",
-    "stft_abs_mean": "having the intake and sensors checked",
-    "stop_start_per_km": "a quieter route where there is a choice",
-}
-
-
 def explain(verdict: dict, top_n: int = 2) -> str:
-    """One paragraph a driver would actually read.
-
-    Outcome first, cause second, lever third.
-
-    The earlier version led with a wear-rate multiple against the fleet median,
-    which is the same fact framed as a verdict on the driver rather than a fact
-    about the car. A number telling someone they drive badly gets argued with; a
-    revised interval telling them what a part will cost gets acted on.
-    """
-    life = verdict["effective_life_km"]
-    nominal = verdict["nominal_km"]
-
-    if life < nominal * 0.9:
-        headline = (
-            f"{verdict['label']} will likely need attention around "
-            f"{life:,.0f} km rather than the usual {nominal:,.0f}."
-        )
-    elif life > nominal * 1.1:
-        headline = (
-            f"{verdict['label']} should comfortably outlast the usual "
-            f"{nominal:,.0f} km, closer to {life:,.0f}."
-        )
+    """One paragraph a driver would actually read."""
+    rate = verdict["multiplier"]
+    if rate >= 1.15:
+        pace = f"{rate:.1f}x faster than the fleet median"
+    elif rate <= 0.87:
+        pace = f"{1 / rate:.1f}x slower than the fleet median"
     else:
-        headline = f"{verdict['label']} is tracking the usual {nominal:,.0f} km."
+        pace = "at about the fleet median pace"
 
-    lines = [headline]
+    lines = [
+        f"{verdict['label']}: wearing {pace}. "
+        f"Book-interval {verdict['nominal_km']:,} km becomes "
+        f"{verdict['effective_life_km']:,.0f} km for this driver."
+    ]
     for reason in verdict["reasons"][:top_n]:
-        if reason["z"] < 0.25:  # only surface what is actually adding wear
+        if abs(reason["z"]) < 0.25:
             continue
-        lever = ACTIONS.get(reason["stressor"])
-        tail = f" {lever[0].upper()}{lever[1:]} would stretch that." if lever else ""
-        lines.append(f"  The biggest factor is {reason['label']}.{tail}")
+        direction = "above" if reason["z"] > 0 else "below"
+        lines.append(
+            f"  - {reason['label']}: {reason['value']:.3g} {reason['units']} "
+            f"({direction} the fleet median of {reason['fleet_median']:.3g}). "
+            f"Why it matters: {reason['mechanism']}."
+        )
     return "\n".join(lines)
