@@ -16,7 +16,7 @@ import streamlit as st
 
 from obd_features import STRESSORS, driver_profile
 from synth import ARCHETYPES, make_fleet
-from wear_index import assess, fleet_stats
+from wear_index import assess, fleet_stats, plain_summary
 
 st.set_page_config(page_title="Wear Index", layout="wide")
 
@@ -30,6 +30,8 @@ st.markdown(
       .part { font-size:1.05rem; font-weight:600; }
       .rate { font-variant-numeric:tabular-nums; font-size:2.1rem; font-weight:600; line-height:1.1; }
       .rate.hot { color:#e8603c; }
+      .plain { color:#e8eaed; font-size:0.97rem; line-height:1.55; max-width:62ch;
+               margin:0.5rem 0 0.15rem; }
       .why { color:#9aa3b0; font-size:0.86rem; line-height:1.5; max-width:62ch; }
       .km { color:#9aa3b0; font-size:0.9rem; font-variant-numeric:tabular-nums; }
       .warn { background:#1c1a14; border:1px solid #5a4a22; color:#d8c89a;
@@ -85,6 +87,11 @@ with right:
             f'<strong>{v["remaining_km"]:,.0f} km left</strong></div>',
             unsafe_allow_html=True,
         )
+        if rank == 0:
+            st.markdown(
+                f'<div class="plain">{plain_summary(v)}</div>',
+                unsafe_allow_html=True,
+            )
         for reason in v["reasons"][:2]:
             if abs(reason["z"]) < 0.25:
                 continue
