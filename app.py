@@ -16,24 +16,9 @@ import streamlit as st
 
 from obd_features import STRESSORS, driver_profile
 from synth import ARCHETYPES, make_fleet
-from wear_index import assess, fleet_stats
+from wear_index import assess, fleet_stats, plain_summary
 
 st.set_page_config(page_title="Wear Index", layout="wide")
-
-# What a driver could actually do about each stressor. A verdict with no lever
-# attached is just an accusation, and people close apps that accuse them.
-ACTIONS = {
-    "brake_dwell_frac": "easing off the pedal on long descents rather than resting on it",
-    "harsh_decel_per_100km": "leaving a little more space and braking earlier",
-    "cold_high_load_events": "keeping the revs light for the first two minutes",
-    "short_trip_frac": "combining short trips, or one longer run a week",
-    "lugging_frac": "changing down before the engine starts labouring",
-    "high_rpm_frac": "shifting up slightly earlier",
-    "idle_frac": "switching off rather than idling for over a minute",
-    "thermal_excursions_per_100km": "having the cooling system looked at",
-    "stft_abs_mean": "having the intake and sensors checked",
-    "stop_start_per_km": "a quieter route where there is a choice",
-}
 
 st.markdown(
     """
@@ -94,30 +79,27 @@ with right:
         hot = v["multiplier"] >= 1.25 or v["remaining_km"] < 5_000
         cls = " hot" if hot and rank == 0 else ""
         st.markdown(f'<div class="rail{cls}">', unsafe_allow_html=True)
-        shorter = v["effective_life_km"] < v["nominal_km"] * 0.9
         st.markdown(
             f'<div class="part">{v["label"]}</div>'
-            f'<div class="rate{cls}">{v["remaining_km"]:,.0f}'
-            f'<span style="font-size:1rem;font-weight:400;"> km</span></div>'
-            f'<div class="km">before it needs attention &middot; '
-            + (
-                f'this car gets there around {v["effective_life_km"]:,.0f} km '
-                f'rather than the usual {v["nominal_km"]:,}'
-                if shorter
-                else f'tracking the usual {v["nominal_km"]:,} km interval'
-            )
-            + '</div>',
+            f'<div class="rate{cls}">{v["multiplier"]:.2f}&times;</div>'
+            f'<div class="km">wear rate vs fleet · '
+            f'{v["nominal_km"]:,} km book interval becomes {v["effective_life_km"]:,.0f} km · '
+            f'<strong>{v["remaining_km"]:,.0f} km left</strong></div>',
             unsafe_allow_html=True,
         )
-        for reason in v["reasons"][:2]:
-            if reason["z"] < 0.25:  # only surface what is actually adding wear
-                continue
-            lever = ACTIONS.get(reason["stressor"])
-            tail = f' {lever[0].upper()}{lever[1:]} would stretch that.' if lever else ''
+        if rank == 0:
             st.markdown(
-                f'<div class="why"><strong>Biggest factor:</strong> '
-                f'{reason["label"]}.{tail} '
-                f'<span style="opacity:0.65">{reason["mechanism"]}.</span></div>',
+                f'<div class="plain">{plain_summary(v)}</div>',
+                unsafe_allow_html=True,
+            )
+        for reason in v["reasons"][:2]:
+            if abs(reason["z"]) < 0.25:
+                continue
+            arrow = "above" if reason["z"] > 0 else "below"
+            st.markdown(
+                f'<div class="why">{reason["label"]} — {reason["value"]:.3g} '
+                f'{reason["units"]}, {arrow} the fleet median of '
+                f'{reason["fleet_median"]:.3g}. {reason["mechanism"]}.</div>',
                 unsafe_allow_html=True,
             )
         st.markdown("</div>", unsafe_allow_html=True)
