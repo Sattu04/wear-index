@@ -209,3 +209,92 @@ def explain(verdict: dict, top_n: int = 2) -> str:
             f"Why it matters: {reason['mechanism']}."
         )
     return "\n".join(lines)
+
+# Plain-English names for the stressors, and the one thing a driver could
+# actually change. Presentation only -- nothing here feeds the model.
+PLAIN = {
+    "brake_dwell_frac": (
+        "light braking while cruising",
+        "lifting off earlier and coasting into stops",
+    ),
+    "harsh_decel_per_100km": (
+        "hard braking",
+        "leaving more room and braking earlier",
+    ),
+    "cold_high_load_events": (
+        "heavy acceleration before the engine has warmed up",
+        "driving gently for the first few minutes",
+    ),
+    "short_trip_frac": (
+        "short trips the engine never warms up on",
+        "combining short errands into one longer run",
+    ),
+    "lugging_frac": (
+        "heavy throttle at low revs",
+        "changing down a gear before accelerating",
+    ),
+    "high_rpm_frac": (
+        "sustained high revs",
+        "shifting up earlier",
+    ),
+    "idle_frac": (
+        "long periods idling",
+        "switching off instead of idling",
+    ),
+    "thermal_excursions_per_100km": (
+        "the engine running hot",
+        "having the cooling system checked",
+    ),
+    "stft_abs_mean": (
+        "the engine management correcting hard",
+        "having the intake and sensors checked",
+    ),
+    "stop_start_per_km": (
+        "very frequent stops",
+        "a route with fewer junctions where that is possible",
+    ),
+}
+
+# Grammar only: which subsystem names take "are" rather than "is".
+SUBSYSTEM_VERB = {
+    "brakes": "are",
+    "engine": "are",
+    "cooling": "is",
+    "fuel_air": "is",
+    "transmission": "is",
+    "battery": "is",
+}
+
+
+def plain_summary(verdict: dict) -> str:
+    """One or two sentences in the words a driver would use.
+
+    This is presentation, not modelling: it restates numbers assess() has
+    already produced and introduces no new claim. In particular it talks about
+    when a service interval falls due, never about when a part will fail --
+    this is an exposure model, and a failure date is not something the data
+    supports.
+    """
+    label = verdict["label"].lower()
+    verb = SUBSYSTEM_VERB.get(verdict["key"], "is")
+    eff, nominal = verdict["effective_life_km"], verdict["nominal_km"]
+    rate = verdict["multiplier"]
+
+    if rate >= 1.15:
+        lead = (f"Your {label} {verb} due at about {eff:,.0f} km "
+                f"instead of the book's {nominal:,} km.")
+    elif rate <= 0.87:
+        lead = (f"Your {label} {verb} wearing more slowly than the fleet, so the "
+                f"book's {nominal:,} km is conservative here — nearer "
+                f"{eff:,.0f} km at this rate.")
+    else:
+        return (f"Your {label} {verb} wearing at about the fleet average, so the "
+                f"book's {nominal:,} km interval is about right for this driver.")
+
+    worst = next((r for r in verdict["reasons"] if r["z"] >= 0.25), None)
+    if worst is None:
+        return lead
+    name, action = PLAIN.get(worst["stressor"], (worst["label"], ""))
+    if not action:
+        return f"{lead} The biggest single factor is {name}."
+    return f"{lead} The biggest single factor is {name} — {action} would stretch that."
